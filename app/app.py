@@ -1,7 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for
+from conexion import obtener_conexion
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
 import mysql.connector
 
 app = Flask(__name__)
+
+conexion = obtener_conexion()
 
 # Conexión a la base de datos
 db = mysql.connector.connect(
@@ -35,9 +42,9 @@ def login():
     if request.method == 'POST':
         correo = request.form['correo']
         password = request.form['password']
-        cursor.execute("SELECT * FROM usuarios WHERE correo=%s AND password=%s", (correo, password))
+        cursor.execute("SELECT * FROM usuarios WHERE correo=%s", (correo,))
         user = cursor.fetchone()
-        if user:
+        if user and check_password_hash(user[3], password):
             return redirect(url_for('dashboard'))
     return render_template('login.html')
 
@@ -45,9 +52,10 @@ def login():
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'POST':
-        nombre = request.form['nombre']
-        correo = request.form['correo']
-        password = request.form['password']
+        nombre = request.form.get('nombre')
+        correo = request.form.get('correo')
+        raw_password = request.form.get('password')
+        password = generate_password_hash(raw_password)
         cursor.execute("INSERT INTO usuarios (nombre, correo, password) VALUES (%s, %s, %s)", (nombre, correo, password))
         db.commit()
         return redirect(url_for('login'))
@@ -139,6 +147,13 @@ def actualizar_hotel(id):
     db.commit()
 
     return redirect(url_for('dashboard'))
+
+@app.route('/eliminar_hotel/<int:id>')
+def eliminar_hotel(id):
+        cursor.execute("DELETE FROM hoteles WHERE id = %s", (id,))
+        db.commit()
+        return redirect(url_for('dashboard'))  # o la ruta que uses para listar hoteles
+from conexion import obtener_conexion
 
 
 # Ejecutar la aplicación
